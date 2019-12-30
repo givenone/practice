@@ -8,6 +8,6 @@ int main()
     while(i--)
     {
         cin >> temp;
-        cout << 1;
+        cout << 1 << endl;
     }
 }
