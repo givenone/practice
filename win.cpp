@@ -10,9 +10,25 @@ LRESULT CALLBACK WndProc (HWND, UINT, WPARAM, LPARAM);
 #include <string>
 #include <time.h>
 #include "mingw.thread.h"
+#include <vector>
 
 using namespace std;
 clock_t timenow;
+
+void GetDesktopResolution(int& horizontal, int& vertical)
+{
+   RECT desktop;
+   // Get a handle to the desktop window
+   const HWND hDesktop = GetDesktopWindow();
+   // Get the size of screen to the variable desktop
+   GetWindowRect(hDesktop, &desktop);
+   // The top left corner will have coordinates (0,0)
+   // and the bottom right corner will have coordinates
+   // (horizontal, vertical)
+   horizontal = desktop.right;
+   vertical = desktop.bottom;
+}
+
 void do_something(float t, ofstream &out)
 {
     POINT p;
@@ -23,11 +39,11 @@ void do_something(float t, ofstream &out)
     while(1)
     {
         clock_t tt = clock();
-        printf("%d\n", timenow - tt);
+        //printf("%d\n", timenow - tt);
         timenow = tt;
         if (GetCursorPos(&p))
         {
-            sprintf(temp, "%d, %d, %d", cnt++, p.x, p.y);
+            sprintf(temp, "%f, %d, %d", t * cnt++, p.x, p.y);
             out << temp << endl;
         }
         //cout << temp;        
@@ -36,14 +52,20 @@ void do_something(float t, ofstream &out)
     std::cout << "I am doing something" << std::endl;
 }
 
-void doit()
+void doit(string name, string interval)
 {
-
-    float time = atof("0.01");
-    string path = string("test");
+    cout << interval << endl << name << endl;
+    float time = atof(interval.c_str());
+    string path = name;
     path = path + ".csv";
     ofstream out(path);
-    
+    int horizontal = 0;
+    int vertical = 0;
+    GetDesktopResolution(horizontal, vertical);
+    cout << horizontal << vertical;
+    char x[1000];
+    sprintf(x, "width : %d, height : %d\n", horizontal, vertical);
+    out << x;
     do_something(time, out);
 }
 
@@ -113,9 +135,10 @@ int WINAPI WinMain (HINSTANCE hInstance,
   return msg.wParam;
 }
 
+HWND hWndButton, tmp, name, interval;
 LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-  HWND hWndButton, tmp; 
+   
   switch (message) {        /* 모든 윈도우 메시지를 처리 */
     case WM_COMMAND: {
       if (((HWND)lParam) && (HIWORD(wParam) == BN_CLICKED)) {
@@ -124,14 +147,24 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         thread t1;
         switch(iMID) {
           case IDBUTTON: {
-            t1 = thread(doit);
-            MessageBox(hWnd, TEXT("Hi"), TEXT("Hello"), MB_OK|MB_ICONEXCLAMATION); 
+               TCHAR buff[1024];
+               GetWindowText(name, buff, 1024);
+               TCHAR buff2[1024];
+              GetWindowText(interval, buff2, 1024);
+
+              cout << buff << buff2 << endl;
+
+            t1 = thread(doit,buff,buff2);
+            t1.detach();
+            //MessageBox(hWnd, TEXT("Hi"), TEXT("Hello"), MB_OK|MB_ICONEXCLAMATION); 
             break; 
             }
           case 103 : 
             {
-                //t1.interrupt();
+                //printf("2\n");
+                t1.~thread();
                 PostQuitMessage (0);  /* 메시지 처리기에 프로그램을 종료하라는 WM_QUIT를 보냄 */
+                return 0;
                 break; 
             } 
           default: 
@@ -152,7 +185,7 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, /* 컨트롤 모양은 |로 분할 */
         10,                         /* 좌측 위치 (좌측으로부터의 위치) */
         10,                         /* 상단 위치 (상단으로부터의 위치) */
-        200,                        /* 컨트롤의 너비 */
+        160,                        /* 컨트롤의 너비 */
         30,                         /* 컨트롤의 높이 */
         hWnd,                       /* 부모 창 처리 */
         (HMENU)IDBUTTON,            /* WM_COMMAND를 위한 컨트롤의 ID */
@@ -163,19 +196,47 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     TEXT("BUTTON"),             /* 만들고픈 GUI '클래스' */
     TEXT("Click to Stop"),          /* GUI 자막(Caption) */
     WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, /* 컨트롤 모양은 |로 분할 */
-    10,                         /* 좌측 위치 (좌측으로부터의 위치) */
-    50,                         /* 상단 위치 (상단으로부터의 위치) */
-    200,                        /* 컨트롤의 너비 */
+    200,                         /* 좌측 위치 (좌측으로부터의 위치) */
+    10,                         /* 상단 위치 (상단으로부터의 위치) */
+    150,                        /* 컨트롤의 너비 */
     30,                         /* 컨트롤의 높이 */
     hWnd,                       /* 부모 창 처리 */
     (HMENU)103,            /* WM_COMMAND를 위한 컨트롤의 ID */
     g_hInst,                    /* 응용프로그램 인스턴스 */
-    NULL);    
+    NULL);   
+    CreateWindowEx(0,TEXT("static"),TEXT("Filename"),WS_CHILD|WS_VISIBLE,10,50,150,30,hWnd,(HMENU)-1,g_hInst,0);
+    CreateWindowEx(0,TEXT("static"),TEXT("Resolution (ms)"),WS_CHILD|WS_VISIBLE,200,50,150,30,hWnd,(HMENU)-1,g_hInst,0);
+    name = CreateWindowEx(0,  /* 더 또는  '확장된' 모양 */
+    TEXT("EDIT"),             /* 만들고픈 GUI '클래스' */
+    TEXT("filename"),          /* GUI 자막(Caption) */
+    WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, /* 컨트롤 모양은 |로 분할 */
+    10,                         /* 좌측 위치 (좌측으로부터의 위치) */
+    80,                         /* 상단 위치 (상단으로부터의 위치) */
+    150,                        /* 컨트롤의 너비 */
+    30,                         /* 컨트롤의 높이 */
+    hWnd,                       /* 부모 창 처리 */
+    (HMENU)104,            /* WM_COMMAND를 위한 컨트롤의 ID */
+    g_hInst,                    /* 응용프로그램 인스턴스 */
+    NULL);
+
+    interval = CreateWindowEx(0,  /* 더 또는  '확장된' 모양 */
+    TEXT("EDIT"),             /* 만들고픈 GUI '클래스' */
+    TEXT("0.1"),          /* GUI 자막(Caption) */
+    WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, /* 컨트롤 모양은 |로 분할 */
+    200,                         /* 좌측 위치 (좌측으로부터의 위치) */
+    80,                         /* 상단 위치 (상단으로부터의 위치) */
+    150,                        /* 컨트롤의 너비 */
+    30,                         /* 컨트롤의 높이 */
+    hWnd,                       /* 부모 창 처리 */
+    (HMENU)105,            /* WM_COMMAND를 위한 컨트롤의 ID */
+    g_hInst,                    /* 응용프로그램 인스턴스 */
+    NULL);
+       
       break; 
       }
     default:             /* 작동하지 않았을 때의 메시지 */
       return DefWindowProc (hWnd, message, wParam, lParam); 
   }
 
-  return 0;
+  return 1;
 }
