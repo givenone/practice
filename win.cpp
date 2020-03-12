@@ -1,8 +1,52 @@
 #include <windows.h>
 
 LRESULT CALLBACK WndProc (HWND, UINT, WPARAM, LPARAM);
-
+#define _WIN32_WINNT 0x0A00
 #define IDBUTTON 102
+
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <time.h>
+#include "mingw.thread.h"
+
+using namespace std;
+clock_t timenow;
+void do_something(float t, ofstream &out)
+{
+    POINT p;
+    int cnt = 1;
+    char temp[1000];
+    //ofstream out = ofstream(argv[1]);
+    timenow = clock();
+    while(1)
+    {
+        clock_t tt = clock();
+        printf("%d\n", timenow - tt);
+        timenow = tt;
+        if (GetCursorPos(&p))
+        {
+            sprintf(temp, "%d, %d, %d", cnt++, p.x, p.y);
+            out << temp << endl;
+        }
+        //cout << temp;        
+        Sleep(t * 1000);
+    }
+    std::cout << "I am doing something" << std::endl;
+}
+
+void doit()
+{
+
+    float time = atof("0.01");
+    string path = string("test");
+    path = path + ".csv";
+    ofstream out(path);
+    
+    do_something(time, out);
+}
+
 
 /* 클래스 이름을 전역 변수로 생성 */
 TCHAR szClassName[] = TEXT("MyFirstProgram");
@@ -77,13 +121,16 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
       if (((HWND)lParam) && (HIWORD(wParam) == BN_CLICKED)) {
         int iMID; 
         iMID = LOWORD(wParam); 
+        thread t1;
         switch(iMID) {
           case IDBUTTON: {
+            t1 = thread(doit);
             MessageBox(hWnd, TEXT("Hi"), TEXT("Hello"), MB_OK|MB_ICONEXCLAMATION); 
             break; 
             }
           case 103 : 
             {
+                //t1.interrupt();
                 PostQuitMessage (0);  /* 메시지 처리기에 프로그램을 종료하라는 WM_QUIT를 보냄 */
                 break; 
             } 
